@@ -16,6 +16,8 @@
 #include <math.h>
 #include <asm/errno.h>
 
+#include <linux/netlink.h>
+
 #ifndef SOL_IPV6
 # define SOL_IPV6 41
 #endif
@@ -662,6 +664,56 @@ static int sgx_ocall_load_debug(void * pms)
     return 0;
 }
 
+static int sgx_ocall_socket_bypass(void * pms)
+{
+	ms_ocall_sock_listen_t* ms = (ms_ocall_sock_listen_t*) pms;
+    int ret = INLINE_SYSCALL(socket, 3, ms->ms_domain,
+                         ms->ms_type,
+                         ms->ms_protocol);
+
+    return ret;
+}
+
+static int sgx_ocall_bind_bypass(void * pms)
+{
+	ms_ocall_sock_bind_t* ms = (ms_ocall_sock_bind_t*) pms;
+	int ret = INLINE_SYSCALL(bind, 3, ms->ms_sockfd, &ms->ms_addr, ms->ms_addrlen);
+    if (IS_ERR(ret)) {
+        ret = unix_to_pal_error(ERRNO(ret));
+        printf("bind ret err: %d\n", ERRNO(ret));
+    }
+    return ret;
+}
+
+static int sgx_ocall_sendmsg_bypass(void * pms)
+{
+	ms_ocall_sock_msg_t * ms = (ms_ocall_sock_msg_t *) pms;
+	struct sockaddr_nl* dest_addr = (struct sockaddr_nl *)ms->msg->msg_name;
+	struct nlmsghdr* nlh = ms->msg->msg_iov->iov_base;
+	ssize_t ret = INLINE_SYSCALL(sendmsg, 3, ms->ms_sockfd, ms->msg, ms->flags);
+
+    if (IS_ERR(ret)) {
+        ret = unix_to_pal_error(ERRNO(ret));
+        printf("sendmsg ret err: %d\n", ERRNO(ret));
+    }
+	return ret;
+}
+
+static int sgx_ocall_recvmsg_bypass(void * pms)
+{
+	ms_ocall_sock_msg_t * ms = (ms_ocall_sock_msg_t *) pms;
+	struct sockaddr_nl* dest_addr = (struct sockaddr_nl *)ms->msg->msg_name;
+	struct nlmsghdr* nlh = ms->msg->msg_iov->iov_base;
+
+	ssize_t ret = INLINE_SYSCALL(recvmsg, 3, ms->ms_sockfd, ms->msg, ms->flags);
+    if (IS_ERR(ret)) {
+        ret = unix_to_pal_error(ERRNO(ret));
+        printf("recvmsg ret err: %d\n", ERRNO(ret));
+    }
+
+	return ret;
+}
+
 void * ocall_table[OCALL_NR] = {
         [OCALL_EXIT]            = (void *) sgx_ocall_exit,
         [OCALL_PRINT_STRING]    = (void *) sgx_ocall_print_string,
@@ -700,6 +752,11 @@ void * ocall_table[OCALL_NR] = {
         [OCALL_RENAME]          = (void *) sgx_ocall_rename,
         [OCALL_DELETE]          = (void *) sgx_ocall_delete,
         [OCALL_LOAD_DEBUG]      = (void *) sgx_ocall_load_debug,
+        /* Bypass OCALL for netlink support */
+        [OCALL_SOCKET_BYPASS]   = (void *) sgx_ocall_socket_bypass,
+		[OCALL_BIND_BYPASS]     = (void *) sgx_ocall_bind_bypass,
+		[OCALL_SENDMSG_BYPASS]  = (void *) sgx_ocall_sendmsg_bypass,
+		[OCALL_RECVMSG_BYPASS]  = (void *) sgx_ocall_recvmsg_bypass,
     };
 
 #define EDEBUG(code, ms) do {} while (0)

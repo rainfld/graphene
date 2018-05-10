@@ -103,3 +103,5 @@ int ocall_rename (const char * oldpath, const char * newpath);
 int ocall_delete (const char * pathname);
 
 int ocall_load_debug (const char * command);
+
+int ocall_socket_bypass(int family, int type, int socket);

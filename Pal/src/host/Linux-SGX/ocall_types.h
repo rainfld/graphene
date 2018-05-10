@@ -53,6 +53,11 @@ enum {
     OCALL_RENAME,
     OCALL_DELETE,
     OCALL_LOAD_DEBUG,
+	/* Bypass functions for netlink socket */
+	OCALL_SOCKET_BYPASS,
+	OCALL_BIND_BYPASS,
+	OCALL_SENDMSG_BYPASS,
+	OCALL_RECVMSG_BYPASS,
     OCALL_NR,
 };
 
@@ -180,6 +185,18 @@ typedef struct {
     unsigned int ms_addrlen;
     struct sockopt ms_sockopt;
 } ms_ocall_sock_accept_t;
+
+typedef struct {
+	int ms_sockfd;
+	struct sockaddr ms_addr;
+	unsigned int ms_addrlen;
+}ms_ocall_sock_bind_t;
+
+typedef struct {
+	int ms_sockfd;
+	struct msghdr * msg;
+	int flags;
+}ms_ocall_sock_msg_t;
 
 typedef struct {
     int ms_domain, ms_type, ms_protocol;

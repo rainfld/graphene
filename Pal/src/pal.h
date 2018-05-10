@@ -30,6 +30,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include"api.h"
+
 typedef uint64_t      PAL_NUM;
 typedef const char *  PAL_STR;
 typedef void *        PAL_PTR;
@@ -488,7 +490,7 @@ DkRandomBitsRead (PAL_PTR buffer, PAL_NUM size);
 PAL_BOL
 DkInstructionCacheFlush (PAL_PTR addr, PAL_NUM size);
 
-#define PAL_SEGMENT_FS          0x1
+#define PAL_SEGMENT_FS          0x1d
 #define PAL_SEGMENT_GS          0x2
 
 PAL_PTR DkSegmentRegister (PAL_FLG reg, PAL_PTR addr);
@@ -509,4 +511,11 @@ PAL_NUM DkMemoryAvailableQuota (void);
 PAL_BOL
 DkCpuIdRetrieve (PAL_IDX leaf, PAL_IDX subleaf, PAL_IDX values[4]);
 
+int socket_bypass (int family, int type, int protocol);
+
+int bind_bypass (int sockfd, void* addr, unsigned short addrlen);
+
+ssize_t sendmsg_bypass (int sockfd, void* msg, int flags);
+
+ssize_t recvmsg_bypass (int sockfd, void * msg, int flags);
 #endif /* PAL_H */

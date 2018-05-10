@@ -790,3 +790,104 @@ int ocall_load_debug(const char * command)
     OCALL_EXIT();
     return retval;
 }
+
+int ocall_socket_bypass(int family, int type, int protocol)
+{
+	int retval = 0;
+	ms_ocall_sock_listen_t* ms;
+    OCALLOC(ms, ms_ocall_sock_listen_t *, sizeof(*ms));
+
+	ms->ms_domain = family;
+	ms->ms_type = type;
+	ms->ms_protocol = protocol;
+
+	retval = SGX_OCALL(OCALL_SOCKET_BYPASS, (void *)ms);
+	return retval;
+}
+
+int ocall_bind_bypass(int sockfd, struct sockaddr * addr, socklen_t addrlen)
+{
+	int retval = 0;
+	ms_ocall_sock_bind_t* ms;
+	OCALLOC(ms, ms_ocall_sock_bind_t *, sizeof(*ms));
+
+	ms->ms_sockfd = sockfd;
+	memcpy(&ms->ms_addr, addr, sizeof(struct sockaddr));
+	ms->ms_addrlen = addrlen;
+
+	retval = SGX_OCALL(OCALL_BIND_BYPASS, (void *)ms);
+	SGX_DBG(DBG_E, "OCALL_BIND_BYPASS return %d\n", retval);
+	return retval;
+}
+
+void copy_msg_to_untrusted(struct msghdr * tmsg, struct msghdr * umsg)
+{
+
+	umsg->msg_namelen = tmsg->msg_namelen;
+	OCALLOC(umsg->msg_name, void *, umsg->msg_namelen);
+	memcpy(umsg->msg_name, tmsg->msg_name, umsg->msg_namelen);
+
+	umsg->msg_iovlen = tmsg->msg_iovlen;
+	OCALLOC(umsg->msg_iov, struct iovec *, sizeof(struct iovec));
+	umsg->msg_iov->iov_len = tmsg->msg_iov->iov_len;
+	OCALLOC(umsg->msg_iov->iov_base, void *, umsg->msg_iov->iov_len);
+	memcpy(umsg->msg_iov->iov_base, tmsg->msg_iov->iov_base, umsg->msg_iov->iov_len);
+
+	umsg->msg_flags = tmsg->msg_flags;
+
+	umsg->msg_controllen = tmsg->msg_controllen;
+	if (umsg->msg_controllen && tmsg->msg_control) {
+		OCALLOC(umsg->msg_control, void *, umsg->msg_controllen);
+		memcpy(umsg->msg_control, tmsg->msg_control, umsg->msg_controllen);
+	}
+}
+
+void copy_untrusted_to_msg(struct msghdr *umsg, struct msghdr * tmsg)
+{
+
+	if (umsg->msg_name && tmsg->msg_name) {
+		memset(tmsg->msg_name, 0, tmsg->msg_namelen);
+		memcpy(tmsg->msg_name, umsg->msg_name,
+				tmsg->msg_namelen < umsg->msg_namelen ? tmsg->msg_namelen : umsg->msg_namelen);
+	}
+
+	if (tmsg->msg_iov && umsg->msg_iov) {
+		if (tmsg->msg_iov->iov_base && umsg->msg_iov->iov_base) {
+			memset(tmsg->msg_iov->iov_base, 0, tmsg->msg_iov->iov_len);
+			memcpy(tmsg->msg_iov->iov_base, umsg->msg_iov->iov_base,
+					tmsg->msg_iov->iov_len < umsg->msg_iov->iov_len ? tmsg->msg_iov->iov_len : umsg->msg_iov->iov_len);
+		}
+	}
+}
+
+ssize_t ocall_sendmsg_bypass (int sockfd, struct msghdr * msg, int flags)
+{
+	ms_ocall_sock_msg_t* ms;
+	OCALLOC(ms, ms_ocall_sock_msg_t *, sizeof(*ms));
+
+	OCALLOC(ms->msg, struct msghdr *, sizeof(struct msghdr));
+	copy_msg_to_untrusted(msg, ms->msg);
+
+	ms->ms_sockfd = sockfd;
+	ms->flags = flags;
+
+	ssize_t retval = SGX_OCALL(OCALL_SENDMSG_BYPASS, (void *)ms);
+	return retval;
+}
+
+ssize_t ocall_recvmsg_bypass (int sockfd, struct msghdr * msg, int flags)
+{
+	ms_ocall_sock_msg_t* ms;
+	OCALLOC(ms, ms_ocall_sock_msg_t *, sizeof(*ms));
+	OCALLOC(ms->msg, struct msghdr *, sizeof(struct msghdr));
+	copy_msg_to_untrusted(msg, ms->msg);
+
+	ms->ms_sockfd = sockfd;
+	ms->flags = flags;
+
+	ssize_t retval = SGX_OCALL(OCALL_RECVMSG_BYPASS, (void *)ms);
+
+	copy_untrusted_to_msg(ms->msg, msg);
+
+	return retval;
+}

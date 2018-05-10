@@ -99,13 +99,32 @@ static int inet_parse_addr (int domain, int type, const char * uri,
 
 static int __process_pending_options (struct shim_handle * hdl);
 
+
+static int netlink_sockfds[10];
+static int fdcnt = 0;
+
+int isNetlinkSock(int sockfd)
+{
+	for (int i = 0; i < fdcnt; i++)
+	{
+		if (netlink_sockfds[i] == sockfd) return 1;
+	}
+	return 0;
+}
 int shim_do_socket (int family, int type, int protocol)
 {
+    if (family == AF_NETLINK) {
+	int sockfd = socket_bypass(family, type, protocol);
+	debug("sockfd value: %d\n", sockfd);
+	netlink_sockfds[fdcnt++] = sockfd;
+	return sockfd;
+    }
     struct shim_handle * hdl = get_new_handle();
     if (!hdl)
         return -ENOMEM;
 
     struct shim_sock_handle * sock = &hdl->info.sock;
+
     hdl->type = TYPE_SOCK;
     set_handle_fs(hdl, &socket_builtin_fs);
     hdl->flags = type & SOCK_NONBLOCK ? O_NONBLOCK : 0;
@@ -120,6 +139,7 @@ int shim_do_socket (int family, int type, int protocol)
         case AF_UNIX:             //Local communication
         case AF_INET:             //IPv4 Internet protocols          ip(7)
         case AF_INET6:            //IPv6 Internet protocols
+        case AF_NETLINK:	  	  //Netlink type support
             break;
 
         default:
@@ -142,7 +162,8 @@ int shim_do_socket (int family, int type, int protocol)
     }
 
     sock->sock_state = SOCK_CREATED;
-    ret = set_new_fd_handle(hdl, type & SOCK_CLOEXEC ? FD_CLOEXEC : 0, NULL);
+    if (sock->domain == AF_NETLINK) ret = socket_bypass(family, type, protocol);
+    else  ret = set_new_fd_handle(hdl, type & SOCK_CLOEXEC ? FD_CLOEXEC : 0, NULL);
 err:
     put_handle(hdl);
     return ret;
@@ -447,6 +468,9 @@ static int create_socket_uri (struct shim_handle * hdl)
 
 int shim_do_bind (int sockfd, struct sockaddr * addr, socklen_t addrlen)
 {
+	debug("socket family: %d\n", addr->sa_family);
+	if (addr->sa_family == AF_NETLINK) return bind_bypass(sockfd, addr, addrlen);
+
     struct shim_handle * hdl = get_fd_handle(sockfd, NULL, NULL);
     int ret = -EINVAL;
     if (!hdl)
@@ -1000,6 +1024,19 @@ int shim_do_accept4 (int fd, struct sockaddr * addr, socklen_t * addrlen,
 static ssize_t do_sendmsg (int fd, struct iovec * bufs, int nbufs, int flags,
                            const struct sockaddr * addr, socklen_t addrlen)
 {
+	if (isNetlinkSock(fd)) {
+		debug("is netlinksock %d\n", fd);
+		struct msghdr * msg = (struct msghdr *)malloc(sizeof(struct msghdr));
+		msg->msg_name = addr;
+		msg->msg_namelen = addrlen;
+		msg->msg_iov = bufs;
+		msg->msg_iovlen = nbufs;
+		msg->msg_flags = flags;
+		msg->msg_controllen = 0;
+		msg->msg_control = NULL;
+
+		return sendmsg_bypass(fd, msg, flags);
+	}
     struct shim_handle * hdl = get_fd_handle(fd, NULL, NULL);
     if (!hdl)
         return -EBADF;
@@ -1152,6 +1189,20 @@ int shim_do_sendmmsg (int sockfd, struct mmsghdr * msg, int vlen, int flags)
 static ssize_t do_recvmsg (int fd, struct iovec * bufs, int nbufs, int flags,
                            struct sockaddr * addr, socklen_t * addrlen)
 {
+	if (isNetlinkSock(fd)) {
+		debug("is netlinksock %d\n", fd);
+		struct msghdr * msg = (struct msghdr *) malloc(sizeof(struct msghdr));
+		msg->msg_name = addr;
+		msg->msg_namelen = *addrlen;
+		msg->msg_iov = bufs;
+		msg->msg_iovlen = nbufs;
+		msg->msg_flags = flags;
+
+		msg->msg_controllen = 0;
+		msg->msg_control = NULL;
+
+		return recvmsg_bypass(fd, msg, flags);
+	}
     struct shim_handle * hdl = get_fd_handle(fd, NULL, NULL);
     if (!hdl)
         return -EBADF;
@@ -1274,6 +1325,7 @@ ssize_t shim_do_recvfrom (int sockfd, void * buf, size_t len, int flags,
 
 ssize_t shim_do_recvmsg (int sockfd, struct msghdr * msg, int flags)
 {
+
     return do_recvmsg(sockfd, msg->msg_iov, msg->msg_iovlen, flags,
                       msg->msg_name, &msg->msg_namelen);
 }

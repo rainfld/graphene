@@ -236,4 +236,6 @@ int pal_printf(const char * fmt, ...);
     do { if ((class) & DBG_LEVEL) pal_printf(fmt); } while (0)
 #endif
 
+int _socket_bypass(int family, int type, int protocol);
+
 #endif /* PAL_LINUX_H */
