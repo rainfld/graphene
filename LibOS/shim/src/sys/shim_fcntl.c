@@ -43,6 +43,10 @@ int shim_do_fcntl (int fd, int cmd, unsigned long arg)
     int flags;
     int ret = -ENOSYS;
 
+    if (isNetlinkSock(fd)){
+      debug("is netlinksock in fcntl: %d\n", fd);
+      return fcntl_bypass(fd, cmd, arg);
+    }
     struct shim_handle * hdl = get_fd_handle(fd, &flags, handle_map);
     if (!hdl)
         return -EBADF;

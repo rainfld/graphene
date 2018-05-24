@@ -105,3 +105,5 @@ int ocall_delete (const char * pathname);
 int ocall_load_debug (const char * command);
 
 int ocall_socket_bypass(int family, int type, int socket);
+
+int ocall_fcntl_bypass(int fd, int cmd, unsigned long arg);

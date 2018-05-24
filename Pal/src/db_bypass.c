@@ -20,3 +20,14 @@ ssize_t recvmsg_bypass (int sockfd, void * msg, int flags)
 {
 	return _recvmsg_bypass(sockfd, msg, flags);
 }
+
+int fcntl_bypass (int fd, int cmd, unsigned long arg)
+{
+    return _fcntl_bypass(fd, cmd, arg);
+}
+
+int setsockopt_bypass (int fd, int level, int optname, char * optval, int optlen)
+{
+    return _setsockopt_bypass(fd, level, optname, optval, optlen);
+}
+

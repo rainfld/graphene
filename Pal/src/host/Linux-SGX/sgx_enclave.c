@@ -674,6 +674,14 @@ static int sgx_ocall_socket_bypass(void * pms)
     return ret;
 }
 
+static int sgx_ocall_setsockopt_bypass(void * pms)
+{
+    ms_ocall_sock_setopt_t* ms = (ms_ocall_sock_setopt_t*) pms;
+    int ret = INLINE_SYSCALL(setsockopt, 5, ms->ms_sockfd, ms->ms_level, 
+                                ms->ms_optname, ms->ms_optval, ms->ms_optlen);
+    return ret;
+}
+
 static int sgx_ocall_bind_bypass(void * pms)
 {
 	ms_ocall_sock_bind_t* ms = (ms_ocall_sock_bind_t*) pms;
@@ -712,6 +720,17 @@ static int sgx_ocall_recvmsg_bypass(void * pms)
     }
 
 	return ret;
+}
+
+static int sgx_ocall_fcntl_bypass(void * pms)
+{
+    unsigned long * ms = (unsigned long *) pms;
+    int fd = ms[0];
+    int cmd = ms[1];
+    unsigned long arg = ms[2];
+
+    int ret = INLINE_SYSCALL(fcntl, 3, fd, cmd, arg);
+    return ret;
 }
 
 void * ocall_table[OCALL_NR] = {
@@ -754,9 +773,11 @@ void * ocall_table[OCALL_NR] = {
         [OCALL_LOAD_DEBUG]      = (void *) sgx_ocall_load_debug,
         /* Bypass OCALL for netlink support */
         [OCALL_SOCKET_BYPASS]   = (void *) sgx_ocall_socket_bypass,
+        [OCALL_SETSOCKOPT_BYPASS]   = (void *) sgx_ocall_setsockopt_bypass,
 		[OCALL_BIND_BYPASS]     = (void *) sgx_ocall_bind_bypass,
 		[OCALL_SENDMSG_BYPASS]  = (void *) sgx_ocall_sendmsg_bypass,
 		[OCALL_RECVMSG_BYPASS]  = (void *) sgx_ocall_recvmsg_bypass,
+        [OCALL_FCNTL_BYPASS]    = (void *) sgx_ocall_fcntl_bypass,
     };
 
 #define EDEBUG(code, ms) do {} while (0)

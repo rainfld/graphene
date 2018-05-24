@@ -434,4 +434,5 @@ size_t get_file_size (struct shim_handle * file);
 int do_handle_read (struct shim_handle * hdl, void * buf, int count);
 int do_handle_write (struct shim_handle * hdl, const void * buf, int count);
 
+int isNetlinkSock(int sockfd);
 #endif /* _SHIM_HANDLE_H_ */

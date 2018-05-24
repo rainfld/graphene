@@ -25,3 +25,16 @@ ssize_t _recvmsg_bypass (int sockfd, struct msghdr * msg, int flags)
 	SGX_DBG(DBG_M, "_recvmsg_bypass is called!\n");
 	return ocall_recvmsg_bypass(sockfd, msg, flags);
 }
+
+
+int _fcntl_bypass (int fd, int cmd, unsigned long arg)
+{
+    SGX_DBG(DBG_M, "_fcntl_bypass is called!\n");
+    return ocall_fcntl_bypass(fd, cmd, arg);
+}
+
+int _setsockopt_bypass (int fd, int level, int optname, char * optval, int optlen)
+{
+    SGX_DBG(DBG_M, "_setsockopt_bypass is called!\n");
+    return ocall_setsockopt_bypass(fd, level, optname, optval, optlen);
+}

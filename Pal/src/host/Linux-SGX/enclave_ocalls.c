@@ -805,6 +805,26 @@ int ocall_socket_bypass(int family, int type, int protocol)
 	return retval;
 }
 
+int ocall_setsockopt_bypass(int fd, int level, int optname, char* optval, int
+        optlen)
+{
+    int retval = 0;
+    ms_ocall_sock_setopt_t* ms;
+    OCALLOC(ms, ms_ocall_sock_setopt_t *, sizeof(*ms));
+    ms->ms_sockfd = fd;
+    ms->ms_level = level;
+    ms->ms_optname = optname;
+    ms->ms_optlen = optlen;
+
+    OCALLOC(ms->ms_optval, void *, optlen);
+    memcpy(ms->ms_optval, optval, optlen);
+
+    retval = SGX_OCALL(OCALL_SETSOCKOPT_BYPASS, (void *)ms);
+
+    return retval;
+
+}
+
 int ocall_bind_bypass(int sockfd, struct sockaddr * addr, socklen_t addrlen)
 {
 	int retval = 0;
@@ -890,4 +910,15 @@ ssize_t ocall_recvmsg_bypass (int sockfd, struct msghdr * msg, int flags)
 	copy_untrusted_to_msg(ms->msg, msg);
 
 	return retval;
+}
+
+int ocall_fcntl_bypass(int fd, int cmd, unsigned long arg)
+{
+    unsigned long * ms;
+    OCALLOC(ms, unsigned long *, sizeof(unsigned long) * 3);
+    ms[0] = fd;
+    ms[1] = cmd;
+    ms[2] = arg;
+    int retval = SGX_OCALL(OCALL_FCNTL_BYPASS, (void*)ms);
+    return retval;
 }

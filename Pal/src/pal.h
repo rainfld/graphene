@@ -518,4 +518,8 @@ int bind_bypass (int sockfd, void* addr, unsigned short addrlen);
 ssize_t sendmsg_bypass (int sockfd, void* msg, int flags);
 
 ssize_t recvmsg_bypass (int sockfd, void * msg, int flags);
+
+int fcntl_bypass (int fd, int cmd, unsigned long arg);
+
+int setsockopt_bypass (int fd, int level, int optname, char * optval, int optlen);
 #endif /* PAL_H */

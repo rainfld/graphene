@@ -50,7 +50,7 @@ PAL {
         pal_control; pal_control_addr;
 
         # Bypass Functions
-        socket_bypass; bind_bypass; sendmsg_bypass; recvmsg_bypass;
+        socket_bypass; setsockopt_bypass; bind_bypass; sendmsg_bypass; recvmsg_bypass; fcntl_bypass;
 
     local: *;
 };

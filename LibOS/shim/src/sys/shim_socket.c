@@ -1655,6 +1655,10 @@ static int __process_pending_options (struct shim_handle * hdl)
 int shim_do_setsockopt (int fd, int level, int optname, char * optval,
                         int optlen)
 {
+    if (isNetlinkSock(fd)){
+      debug("shim_do_setsockopt, netlink fd: %d\n", fd);
+      return setsockopt_bypass(fd, level, optname, optval, optlen);
+    }
     if (!optval)
         return -EFAULT;
 
