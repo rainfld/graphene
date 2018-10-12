@@ -21,7 +21,7 @@
  * db_socket.c
  *
  * This file contains operands for streams with URIs that start with
- * "tcp:", "tcp.srv:", "udp:", "udp.srv:".
+ * "tcp:", "tcp.srv:", "udp:", "udp.srv:", "nl:"
  */
 
 #include "pal_defs.h"
@@ -38,6 +38,7 @@
 #include <linux/poll.h>
 #include <linux/in.h>
 #include <linux/in6.h>
+#include <linux/netlink.h>
 typedef __kernel_pid_t pid_t;
 #include <asm/fcntl.h>
 #include <asm-generic/socket.h>
@@ -750,6 +751,104 @@ static int64_t udp_sendbyaddr (PAL_HANDLE handle, uint64_t offset, uint64_t len,
     return bytes;
 }
 
+static int nl_parse_uri(const char * uri, int * nl_protocol){
+    
+    if (!uri) 
+        goto inval;
+    
+    char * sp = strchr(uri, '.');
+    if (!sp)
+        goto inval;
+
+    *nl_protocol = atoi(++sp);
+    
+    SGX_DBG(DBG_E, "[TEST]nl_protocol: %d\n", *nl_protocol);
+
+    return 1;
+    
+inval:
+    return -PAL_ERROR_INVAL;
+}
+static int nl_open (PAL_HANDLE *hdl, const char * type, const char * uri,
+        int access, int share, int create, int options)
+{
+	SGX_DBG(DBG_E, "calling nl_open uri: %s\n", uri);
+	struct sockaddr_nl addr;
+    int nl_protocol = 0;
+	unsigned int addrlen = sizeof(struct sockaddr_nl);
+    struct sockopt sock_options;
+	int ret;
+
+
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = atoi(uri);
+
+    if ((ret = nl_parse_uri(uri, &nl_protocol)) < 0)
+        return ret;
+
+    SGX_DBG(DBG_E, "nl_pid and nl_protocol: %d, %d\n", addr.nl_pid,
+            nl_protocol);
+
+	/* Fixme: using 31 hardcoded for protocol, need to resolve before PR */
+    ret = ocall_sock_listen(AF_NETLINK, sock_type(SOCK_DGRAM, options), nl_protocol,
+                            (struct sockaddr *) &addr, &addrlen,
+                            &sock_options);
+    if (ret < 0) {
+    	SGX_DBG(DBG_E, "sock listen on nl failed: %d\n", ret);
+        return ret;
+    }
+
+	// create PAL handle for netlink socket
+    *hdl = socket_create_handle(pal_type_nl, ret, options,
+                                   (struct sockaddr *)&addr, addrlen, NULL, 0,
+                                   &sock_options);
+
+	return 1;
+}
+
+static int64_t nl_send (PAL_HANDLE handle, uint64_t offset, uint64_t len,
+                         const void * buf)
+{
+    if (!IS_HANDLE_TYPE(handle, nl))
+        return -PAL_ERROR_NOTCONNECTION;
+
+    if (handle->sock.fd == PAL_IDX_POISON)
+        return -PAL_ERROR_BADHANDLE;
+
+    if (len >= (1ULL << (sizeof(unsigned int) * 8)))
+        return -PAL_ERROR_INVAL;
+
+    int bytes = ocall_sock_send(handle->sock.fd, buf, len, NULL, 0);
+
+    if (bytes == -PAL_ERROR_TRYAGAIN)
+        HANDLE_HDR(handle)->flags &= ~WRITEABLE(0);
+
+    if (bytes < 0)
+        return bytes;
+
+    if (bytes == len)
+        HANDLE_HDR(handle)->flags |= WRITEABLE(0);
+    else
+        HANDLE_HDR(handle)->flags &= ~WRITEABLE(0);
+
+    return bytes;
+}
+
+static int64_t nl_recv (PAL_HANDLE handle, uint64_t offset, uint64_t len,
+                            void * buf)
+{
+    if (!IS_HANDLE_TYPE(handle, nl))
+        return -PAL_ERROR_NOTCONNECTION;
+
+    if (handle->sock.fd == PAL_IDX_POISON)
+        return -PAL_ERROR_BADHANDLE;
+
+    if (len >= (1ULL << (sizeof(unsigned int) * 8)))
+        return -PAL_ERROR_INVAL;
+
+    return ocall_sock_recv(handle->sock.fd, buf, len, NULL, NULL);
+}
+
 static int socket_delete (PAL_HANDLE handle, int access)
 {
     if (handle->sock.fd == PAL_IDX_POISON)
@@ -1046,6 +1145,18 @@ struct handle_ops udpsrv_ops = {
         .attrquerybyhdl = &socket_attrquerybyhdl,
         .attrsetbyhdl   = &socket_attrsetbyhdl,
     };
+
+struct handle_ops nl_ops = {
+        .getname        = &socket_getname,
+        .open           = &nl_open,
+        .write          = &nl_send,
+        .read           = &nl_recv,
+        .delete         = &socket_delete,
+        .close          = &socket_close,
+        .attrquerybyhdl = &socket_attrquerybyhdl,
+        .attrsetbyhdl   = &socket_attrsetbyhdl,
+    };
+
 
 PAL_HANDLE _DkBroadcastStreamOpen (void)
 {

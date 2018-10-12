@@ -141,6 +141,7 @@ struct shim_pipe_handle {
 
 #define SOCK_STREAM     1
 #define SOCK_DGRAM      2
+#define SOCK_RAW		3
 #define SOCK_NONBLOCK   04000
 #define SOCK_CLOEXEC    02000000
 
@@ -151,10 +152,12 @@ struct shim_pipe_handle {
 #define PF_FILE         PF_LOCAL
 #define PF_INET         2
 #define PF_INET6        10
+#define PF_NETLINK		16
 
 #define AF_UNIX         PF_UNIX
 #define AF_INET         PF_INET
 #define AF_INET6        PF_INET6
+#define AF_NETLINK		PF_NETLINK
 
 enum shim_sock_state {
     SOCK_CREATED,
@@ -196,6 +199,10 @@ struct shim_sock_handle {
             unsigned int         pipeid;
             struct shim_unix_data * data;
         } un;
+        // Netlink addrk
+        struct addr_nl {
+        	pid_t pid;
+        }nl;
     } addr;
 
     struct shim_sock_option {

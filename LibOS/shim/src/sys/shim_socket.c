@@ -40,6 +40,8 @@
 #include <linux/fcntl.h>
 #include <linux/in.h>
 #include <linux/in6.h>
+#include <linux/un.h>
+#include <linux/netlink.h>
 
 #include <asm/socket.h>
 
@@ -74,6 +76,8 @@ static int minimal_addrlen (int domain)
             return sizeof(struct sockaddr_in);
         case AF_INET6:
             return sizeof(struct sockaddr_in6);
+        case AF_NETLINK:
+        	return sizeof(struct sockaddr_nl);
         default:
             return sizeof(struct sockaddr);
     }
@@ -132,6 +136,7 @@ int shim_do_socket (int family, int type, int protocol)
         case AF_UNIX:             //Local communication
         case AF_INET:             //IPv4 Internet protocols          ip(7)
         case AF_INET6:            //IPv6 Internet protocols
+        case AF_NETLINK:          //Netlink socket
             break;
 
         default:
@@ -146,6 +151,16 @@ int shim_do_socket (int family, int type, int protocol)
         case SOCK_DGRAM:          //UDP
             hdl->acc_mode = MAY_READ|MAY_WRITE;
             break;
+        case SOCK_RAW:
+        	if (sock->domain == AF_NETLINK)
+        	{
+        		hdl->acc_mode = MAY_READ|MAY_WRITE;
+        		break;
+        	}
+        	else {
+        		debug("shim_socket: unsupported raw socket\n");
+        		goto err;
+        	}
 
         default:
             debug("shim_socket: unknown socket type %d\n",
@@ -185,6 +200,30 @@ static int unix_create_uri (char * uri, int count, enum shim_sock_state state,
             return -ENOTCONN;
     }
 
+    return bytes == count ? -ENAMETOOLONG : bytes;
+}
+
+static int netlink_create_uri (char * uri, int count, enum shim_sock_state state,
+                            unsigned int nl_pid, int nl_protocol)
+{
+    int bytes = 0;
+
+    switch (state) {
+        case SOCK_CREATED:
+        case SOCK_BOUNDCONNECTED:
+        case SOCK_SHUTDOWN:
+            return -ENOTCONN;
+
+        case SOCK_BOUND:
+        case SOCK_LISTENED:
+        case SOCK_ACCEPTED:
+        case SOCK_CONNECTED:
+            bytes = snprintf(uri, count, "nl:%u.%u", nl_pid, nl_protocol);
+            break;
+
+        default:
+            return -ENOTCONN;
+    }
     return bytes == count ? -ENAMETOOLONG : bytes;
 }
 
@@ -453,6 +492,17 @@ static int create_socket_uri (struct shim_handle * hdl)
         return 0;
     }
 
+    if (sock->domain == AF_NETLINK) {
+        char uri_buf[32];
+        int bytes = netlink_create_uri(uri_buf, 32, sock->sock_state,
+                                    sock->addr.nl.pid, sock->protocol);
+        if (bytes < 0)
+            return bytes;
+
+        qstrsetstr(&hdl->uri, uri_buf, bytes);
+        return 0;
+    }
+
     return -EPROTONOSUPPORT;
 }
 
@@ -514,6 +564,10 @@ int shim_do_bind (int sockfd, struct sockaddr * addr, socklen_t addrlen)
             goto out;
         inet_save_addr(sock->domain, &sock->addr.in.bind, addr);
         inet_rebase_port(false, sock->domain, &sock->addr.in.bind, true);
+    } else if (sock->domain == AF_NETLINK) {
+        struct sockaddr_nl * saddr = (struct sockaddr_nl *) addr;
+    	sock->addr.nl.pid = saddr->nl_pid;
+    	debug("binding netlink sock, pid: %d\n", saddr->nl_pid);
     }
 
     sock->sock_state = SOCK_BOUND;
@@ -1106,7 +1160,7 @@ static ssize_t do_sendmsg (int fd, struct iovec * bufs, int nbufs, int flags,
 
     unlock(hdl->lock);
 
-    if (uri) {
+    if (uri && sock->domain != AF_NETLINK) {
         struct addr_inet addr_buf;
         inet_save_addr(sock->domain, &addr_buf, addr);
         inet_rebase_port(false, sock->domain, &addr_buf, false);
@@ -1537,6 +1591,8 @@ static int __do_setsockopt (struct shim_handle * hdl, int level, int optname,
             case SO_SNDTIMEO:
             case SO_REUSEADDR:
                 goto query;
+            case SO_PASSCRED:
+            	goto ret;
             default:
                 goto unknown;
         }
@@ -1631,7 +1687,7 @@ query:
 set:
     if (!DkStreamAttributesSetbyHandle(hdl->pal_handle, attr))
         return -PAL_ERRNO;
-
+ret:
     return 0;
 }
 

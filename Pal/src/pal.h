@@ -114,6 +114,7 @@ enum {
     pal_type_tcpsrv,
     pal_type_udp,
     pal_type_udpsrv,
+    pal_type_nl,
     pal_type_process,
     pal_type_mcast,
     pal_type_thread,

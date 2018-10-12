@@ -42,6 +42,7 @@ extern struct handle_ops dir_ops;
 extern struct handle_ops tcp_ops;
 extern struct handle_ops udp_ops;
 extern struct handle_ops udpsrv_ops;
+extern struct handle_ops nl_ops;
 extern struct hadnle_ops udppacket_ops;
 extern struct handle_ops thread_ops;
 extern struct handle_ops proc_ops;
@@ -62,6 +63,7 @@ const struct handle_ops * pal_handle_ops [PAL_HANDLE_TYPE_BOUND] = {
             [pal_type_tcpsrv]    = &tcp_ops,
             [pal_type_udp]       = &udp_ops,
             [pal_type_udpsrv]    = &udpsrv_ops,
+            [pal_type_nl]    	 = &nl_ops,
             [pal_type_process]   = &proc_ops,
             [pal_type_mcast]     = &mcast_ops,
             [pal_type_thread]    = &thread_ops,
@@ -85,6 +87,10 @@ int parse_stream_uri (const char ** uri, const char ** prefix,
     struct handle_ops * hops = NULL;
 
     switch (p - u) {
+    	case 2:
+    		if (strpartcmp_static(u, "nl"))
+    		    hops = &nl_ops;
+    		break;
         case 3:
             if (strpartcmp_static(u, "dir"))
                 hops = &dir_ops;
