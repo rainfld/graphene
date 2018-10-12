@@ -751,11 +751,30 @@ static int64_t udp_sendbyaddr (PAL_HANDLE handle, uint64_t offset, uint64_t len,
     return bytes;
 }
 
+static int nl_parse_uri(const char * uri, int * nl_protocol){
+    
+    if (!uri) 
+        goto inval;
+    
+    char * sp = strchr(uri, '.');
+    if (!sp)
+        goto inval;
+
+    *nl_protocol = atoi(++sp);
+    
+    SGX_DBG(DBG_E, "[TEST]nl_protocol: %d\n", *nl_protocol);
+
+    return 1;
+    
+inval:
+    return -PAL_ERROR_INVAL;
+}
 static int nl_open (PAL_HANDLE *hdl, const char * type, const char * uri,
         int access, int share, int create, int options)
 {
 	SGX_DBG(DBG_E, "calling nl_open uri: %s\n", uri);
 	struct sockaddr_nl addr;
+    int nl_protocol = 0;
 	unsigned int addrlen = sizeof(struct sockaddr_nl);
     struct sockopt sock_options;
 	int ret;
@@ -764,8 +783,14 @@ static int nl_open (PAL_HANDLE *hdl, const char * type, const char * uri,
 	addr.nl_family = AF_NETLINK;
 	addr.nl_pid = atoi(uri);
 
+    if ((ret = nl_parse_uri(uri, &nl_protocol)) < 0)
+        return ret;
+
+    SGX_DBG(DBG_E, "nl_pid and nl_protocol: %d, %d\n", addr.nl_pid,
+            nl_protocol);
+
 	/* Fixme: using 31 hardcoded for protocol, need to resolve before PR */
-    ret = ocall_sock_listen(AF_NETLINK, sock_type(SOCK_DGRAM, options), 31,
+    ret = ocall_sock_listen(AF_NETLINK, sock_type(SOCK_DGRAM, options), nl_protocol,
                             (struct sockaddr *) &addr, &addrlen,
                             &sock_options);
     if (ret < 0) {
