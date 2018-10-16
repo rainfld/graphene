@@ -15,16 +15,6 @@ def gen_dockerfile( image_name, app_name, bin_name, proj_dir) :
   df.write('FROM '+ image_name + '\n')
   df.write('\n')
 
-  # SETUP INTEL Proxy
-  df.write('# Setup Intel Proxy\n')
-  df.write('ENV no_proxy=.intel.com\n')
-  df.write('ENV https_proxy=http://proxy-us.intel.com:912\n')
-  df.write('ENV http_proxy=http://proxy-us.intel.com:911\n')
-  df.write('ENV NO_PROXY=.intel.com\n')
-  df.write('ENV HTTP_PROXY=http://proxy-us.intel.com:911\n')
-  df.write('ENV HTTPS_PROXY=http://proxy-us.intel.com:912\n')
-  df.write('\n')
-
   # SWITCH to ROOT
   df.write('# SWITCH to root \n')
   df.write('USER root \n')
@@ -117,15 +107,14 @@ if __name__ == "__main__":
   print "app_name: " + app_name
   # sometime application name contains "/", remove it
   app_name = (app_name.split("/"))[0];
-  print "app_name mod: " + app_name
+  
   inspect_cmd = "sudo docker inspect --format '{{.Config.Cmd}}' " + image_name
   res = subprocess.check_output(inspect_cmd, shell=True).strip()
   print res
   # sometime docker generated with "/bin/sh -c" started
   if (res.startswith("[/bin/sh -c ")):
-    print "TRUEEEEEEEEEEEEEEE"
-    print res[12:]
     res = '[' + res[12:]
+  
   match = re.match(r'\[([^\s]*)\s*(.*)\]', res)
   bin_name = match.group(1)
   if match.group(2) :

@@ -22,12 +22,17 @@ def parse_libs (bin_path) :
     match = re.match(r'\t(.*) => (.*) \(0x', line)
     if match and match.group(1) and match.group(2):
       full_lib_name = match.group(1)
-      name_match = re.match(r'([\w\d]*)(\.*)(.*)', full_lib_name)
+      name_match = re.match(r'([\w\d]*)(-*)([\w\d]*)(\.*)(.*)', full_lib_name)
       if name_match:
         lib_name = name_match.group(1)
-        lib_path = match.group(2)
+        
+	# Sometimes the library is formatted as libxxx-xxx.so
+	if name_match.group(2) == '-' and name_match.group(3) :
+	  lib_name += '_' + name_match.group(3)
+	
+	lib_path = match.group(2)
         if lib_name not in runtime_libs : 
-          lib_list.append((name_match.group(1), match.group(2)))
+          lib_list.append((lib_name, match.group(2)))
   return lib_list
 
 def make_exec(path) :
