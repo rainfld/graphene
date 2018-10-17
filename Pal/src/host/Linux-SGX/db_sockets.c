@@ -916,7 +916,7 @@ static int socket_attrquerybyhdl (PAL_HANDLE handle, PAL_STREAM_ATTR  * attr)
 
     int fd = handle->sock.fd, ret;
 
-    if (!IS_HANDLE_TYPE(handle, tcpsrv)) {
+    if (!IS_HANDLE_TYPE(handle, tcpsrv) && !IS_HANDLE_TYPE(handle, nl)) {
         /* try use ioctl FIONEAD to get the size of socket */
         ret = ocall_fionread(fd);
         if (ret < 0)
