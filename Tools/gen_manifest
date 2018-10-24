@@ -52,7 +52,8 @@ def gen_manifest(app_name, bin_name, g_path) :
   bin_path = subprocess.check_output(['which', bin_name]).strip()
   mf.write('loader.exec = file:' + bin_path + '\n')
   mf.write('loader.execname = ' + bin_name + '\n')
-  mf.write('loader.env.LD_LIBRARY_PATH = /graphene:/graphene/resolv:/host:/usr/local/lib:/usr/lib:/usr/lib/x86_64-linux-gnu \n')
+  mf.write('loader.env.LD_LIBRARY_PATH = /graphene:/graphene/resolv:/host:/usr/local/lib:/usr/lib:/usr/lib/x86_64-linux-gnu')
+  mf.write(':'+os.environ['LD_LIBRARY_PATH']+"\n")
   mf.write('loader.env.PATH = /usr/local/bin:/usr/bin:/bin \n' + 
  	   'loader.env.USERNAME = \n' + 
            'loader.env.PWD = \n' +
@@ -79,7 +80,11 @@ def gen_manifest(app_name, bin_name, g_path) :
   mf.write('fs.mount.etc.type = chroot \n' +
 	   'fs.mount.etc.path = /etc \n' +
 	   'fs.mount.etc.uri = file: \n \n')
-  
+
+ 
+  mf.write('fs.mount.opt.type = chroot \n' +
+	   'fs.mount.opt.path = /opt \n' +
+	   'fs.mount.opt.uri = file: \n \n')
   # Set Dependent Libraries
   
   mf.write('sgx.trusted_files.ld = file:../../../../../Runtime/ld-linux-x86-64.so.2 \n' +
