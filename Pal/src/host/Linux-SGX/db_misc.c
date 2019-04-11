@@ -201,3 +201,10 @@ int _DkCpuIdRetrieve (unsigned int leaf, unsigned int subleaf,
     add_cpuid_to_cache(leaf, subleaf, values);
     return 0;
 }
+
+int _DkRdtsc(uint64_t* rax, uint64_t* rdx)
+{
+    if(ocall_rdtsc(rax, rdx))
+        return -PAL_ERROR_DENIED;
+    return 0;
+}

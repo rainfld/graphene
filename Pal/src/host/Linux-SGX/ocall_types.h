@@ -24,6 +24,7 @@ enum {
     OCALL_MAP_UNTRUSTED,
     OCALL_UNMAP_UNTRUSTED,
     OCALL_CPUID,
+    OCALL_RDTSC,
     OCALL_OPEN,
     OCALL_CLOSE,
     OCALL_READ,
@@ -88,6 +89,11 @@ typedef struct {
     unsigned int ms_subleaf;
     unsigned int ms_values[4];
 } ms_ocall_cpuid_t;
+
+typedef struct {
+    unsigned int low_values;
+    unsigned int high_values;
+} ms_ocall_rdtsc_t;
 
 typedef struct {
     const char * ms_pathname;

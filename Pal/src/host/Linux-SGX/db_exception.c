@@ -225,8 +225,12 @@ void _DkExceptionHandler (unsigned int exit_info, sgx_context_t * uc)
         }
         if (instr[0] == 0x0f && instr[1] == 0x31) {
             uc->rip += 2;
-            uc->rdx = 0;
-            uc->rax = 0;
+
+            /* If rdtsc fails, set the values to 0 */
+            if (_DkRdtsc(&uc->rax, &uc->rdx)){
+                uc->rdx = 0;
+                uc->rax = 0;
+            }
             restore_sgx_context(uc);
             return;
         }

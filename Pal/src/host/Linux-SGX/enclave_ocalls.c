@@ -185,6 +185,18 @@ int ocall_cpuid (unsigned int leaf, unsigned int subleaf,
     return retval;
 }
 
+int ocall_rdtsc(uint64_t* low, uint64_t* high)
+{
+    ms_ocall_rdtsc_t *ms;
+    OCALLOC(ms, ms_ocall_rdtsc_t *, sizeof(*ms));
+
+    int retval = SGX_OCALL(OCALL_RDTSC, ms);
+
+    *low = ms->low_values;
+    *high = ms->high_values;
+    return retval;
+}
+
 int ocall_open (const char * pathname, int flags, unsigned short mode)
 {
     int retval = 0;

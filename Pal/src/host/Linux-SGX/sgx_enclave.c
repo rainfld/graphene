@@ -95,6 +95,15 @@ static int sgx_ocall_cpuid(void * pms)
     return 0;
 }
 
+static int sgx_ocall_rdtsc(void * pms)
+{
+    ms_ocall_rdtsc_t * ms = (ms_ocall_rdtsc_t *) pms;
+    __asm__ volatile ("rdtsc"
+                  : "=a" (ms->low_values),
+                    "=d" (ms->high_values));
+    return 0;
+}
+
 static int sgx_ocall_open(void * pms)
 {
     ms_ocall_open_t * ms = (ms_ocall_open_t *) pms;
@@ -674,6 +683,7 @@ sgx_ocall_fn_t ocall_table[OCALL_NR] = {
         [OCALL_MAP_UNTRUSTED]   = sgx_ocall_map_untrusted,
         [OCALL_UNMAP_UNTRUSTED] = sgx_ocall_unmap_untrusted,
         [OCALL_CPUID]           = sgx_ocall_cpuid,
+        [OCALL_RDTSC]           = sgx_ocall_rdtsc,
         [OCALL_OPEN]            = sgx_ocall_open,
         [OCALL_CLOSE]           = sgx_ocall_close,
         [OCALL_READ]            = sgx_ocall_read,
