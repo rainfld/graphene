@@ -101,7 +101,7 @@ static int proc_cpuinfo_open (struct shim_handle * hdl, const char * name,
             { "model name     : %s\n",  (unsigned long) pal_control.cpu_info.cpu_brand, },
             { "stepping       : %lu\n", pal_control.cpu_info.cpu_stepping, },
             { "core id        : %lu\n", 0, },
-            { "cpu_core       : %lu\n", pal_control.cpu_info.cpu_num, },
+            { "cpu cores       : %lu\n", pal_control.cpu_info.cpu_num, },
         };
 
 retry:
