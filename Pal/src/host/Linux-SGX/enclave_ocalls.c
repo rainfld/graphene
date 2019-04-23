@@ -601,6 +601,9 @@ int ocall_sock_recv (int sockfd, void * buf, unsigned int count,
 
         COPY_FROM_USER(buf, ms->ms_buf, retval);
         COPY_FROM_USER(addr, ms->ms_addr, ms->ms_addrlen);
+
+	memset(ms->ms_buf, 0, retval);
+
         if (addrlen)
             *addrlen = ms->ms_addrlen;
     }
