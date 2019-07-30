@@ -43,6 +43,7 @@ enum shim_handle_type {
     TYPE_FILE,
     TYPE_DEV,
     TYPE_PIPE,
+    TYPE_EVENTFD,
     TYPE_SOCK,
     TYPE_DIR,
     TYPE_SHM,
@@ -134,7 +135,14 @@ struct shim_pipe_handle {
     struct shim_handle *    pair;
 #else
     IDTYPE                  pipeid;
+    struct shim_handle*     eventfd_hdl; /* If associated with an eventfd */
 #endif
+};
+
+struct shim_eventfd_handle {
+    long long                counter;
+    int                      pipe_fds[2];
+    struct shim_handle*      pipe_hdl[2];
 };
 
 #define SOCK_STREAM     1
@@ -345,16 +353,17 @@ struct shim_handle {
     PAL_HANDLE              pal_handle;
 
     union {
-        struct shim_file_handle   file;
-        struct shim_dev_handle    dev;
-        struct shim_pipe_handle   pipe;
-        struct shim_sock_handle   sock;
-        struct shim_shm_handle    shm;
-        struct shim_msg_handle    msg;
-        struct shim_sem_handle    sem;
-        struct shim_futex_handle  futex;
-        struct shim_str_handle    str;
-        struct shim_epoll_handle  epoll;
+        struct shim_file_handle       file;
+        struct shim_dev_handle        dev;
+        struct shim_pipe_handle       pipe;
+        struct shim_eventfd_handle    eventfd;
+        struct shim_sock_handle       sock;
+        struct shim_shm_handle        shm;
+        struct shim_msg_handle        msg;
+        struct shim_sem_handle        sem;
+        struct shim_futex_handle      futex;
+        struct shim_str_handle        str;
+        struct shim_epoll_handle      epoll;
     } info;
 
     struct shim_dir_handle    dir_info;

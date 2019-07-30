@@ -412,6 +412,7 @@ int shim_do_fsync (int fd);
 int shim_do_fdatasync (int fd);
 int shim_do_truncate (const char * path, loff_t length);
 int shim_do_ftruncate (int fd, loff_t length);
+int shim_do_eventfd2(int init, int flags);
 size_t shim_do_getdents (int fd, struct linux_dirent * buf, size_t count);
 int shim_do_getcwd (char *buf, size_t size);
 int shim_do_chdir (const char * filename);

@@ -23,6 +23,7 @@
 #include <shim_internal.h>
 #include <shim_utils.h>
 #include <shim_table.h>
+#include <shim_thread.h>
 #include <shim_handle.h>
 #include <shim_fs.h>
 
@@ -71,6 +72,49 @@ err:
         DkObjectClose(hdl2);
     DkStreamDelete(hdl0, 0);
     DkObjectClose(hdl0);
+    return ret;
+}
+
+
+int shim_do_eventfd2(int init, int flags)
+{
+    debug("shim_do_eventfd2 called!\n");
+    int ret;
+    int fds[2];
+
+    shim_do_pipe2(fds, flags);
+
+    struct shim_handle* hdl = get_new_handle();
+
+    if (!hdl) {
+        ret = -ENOMEM;
+        goto out;
+    }
+
+    hdl->type       = TYPE_EVENTFD;
+    set_handle_fs(hdl, &eventfd_builtin_fs);
+    hdl->flags      = O_RDONLY;
+    hdl->acc_mode   = MAY_READ | MAY_WRITE;
+
+    hdl->info.eventfd.counter = init;
+
+    hdl->info.eventfd.pipe_fds[0] = fds[0];
+    hdl->info.eventfd.pipe_fds[1] = fds[1];
+
+    struct shim_thread * cur = get_cur_thread();
+
+    hdl->info.eventfd.pipe_hdl[0] = get_fd_handle(fds[0], NULL, cur->handle_map);
+    hdl->info.eventfd.pipe_hdl[1] = get_fd_handle(fds[1], NULL, cur->handle_map);
+
+    hdl->info.eventfd.pipe_hdl[0]->info.pipe.eventfd_hdl = hdl;
+    hdl->info.eventfd.pipe_hdl[1]->info.pipe.eventfd_hdl = hdl;
+
+    int eventfd = set_new_fd_handle(hdl, flags, NULL);
+    ret = eventfd;
+
+out:
+    if (hdl)
+        put_handle(hdl);
     return ret;
 }
 

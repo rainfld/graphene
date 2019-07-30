@@ -181,6 +181,19 @@ int shim_do_epoll_ctl (int epfd, int op, int fd,
         return -EINVAL;
     }
 
+
+    struct shim_handle * curr_hdl = get_fd_handle(fd, NULL, cur->handle_map);
+
+    if (!curr_hdl) {
+        ret = -EBADF;
+        goto out;
+    }
+
+    if (curr_hdl->type == TYPE_EVENTFD && event->events & EPOLLIN) {
+        /* Use pipe fd instead */
+        fd = curr_hdl->info.eventfd.pipe_fds[0];
+    }
+
     struct shim_epoll_handle * epoll = &epoll_hdl->info.epoll;
     struct shim_epoll_fd * epoll_fd;
 
@@ -237,7 +250,7 @@ int shim_do_epoll_ctl (int epfd, int op, int fd,
 
         case EPOLL_CTL_MOD: {
             LISTP_FOR_EACH_ENTRY(epoll_fd, &epoll->fds, list)
-                if (epoll_fd->fd == fd) {
+                if (epoll_fd->fd == fd) {,s
                     epoll_fd->events = event->events;
                     epoll_fd->data = event->data;
                     goto update;
