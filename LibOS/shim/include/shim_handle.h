@@ -38,6 +38,8 @@
 #include <asm/fcntl.h>
 #include <asm/resource.h>
 
+#include<stdatomic.h>
+
 /* start definition of shim handle */
 enum shim_handle_type {
     TYPE_FILE,
@@ -140,7 +142,7 @@ struct shim_pipe_handle {
 };
 
 struct shim_eventfd_handle {
-    long long                counter;
+    atomic_llong                counter;
     int                      pipe_fds[2];
     struct shim_handle*      pipe_hdl[2];
 };

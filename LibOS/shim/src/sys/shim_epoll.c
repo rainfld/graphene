@@ -250,7 +250,7 @@ int shim_do_epoll_ctl (int epfd, int op, int fd,
 
         case EPOLL_CTL_MOD: {
             LISTP_FOR_EACH_ENTRY(epoll_fd, &epoll->fds, list)
-                if (epoll_fd->fd == fd) {,s
+                if (epoll_fd->fd == fd) {
                     epoll_fd->events = event->events;
                     epoll_fd->data = event->data;
                     goto update;
