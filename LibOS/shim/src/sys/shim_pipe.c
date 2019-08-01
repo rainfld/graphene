@@ -93,7 +93,7 @@ int shim_do_eventfd2(int init, int flags)
 
     hdl->type       = TYPE_EVENTFD;
     set_handle_fs(hdl, &eventfd_builtin_fs);
-    hdl->flags      = O_RDONLY;
+    hdl->flags      = flags;
     hdl->acc_mode   = MAY_READ | MAY_WRITE;
 
     hdl->info.eventfd.counter = init;

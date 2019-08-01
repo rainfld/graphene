@@ -31,7 +31,6 @@
 static ssize_t eventfd_read (struct shim_handle * hdl, void * buf,
                           size_t count)
 {
-    debug("eventfd_read called!\n");
     ssize_t ret = EVENTFD_COUNTER_SIZE;
 
     if (!buf || count != EVENTFD_COUNTER_SIZE)
@@ -42,8 +41,17 @@ static ssize_t eventfd_read (struct shim_handle * hdl, void * buf,
 
     if (hdl->info.eventfd.counter == 0)
     {
-        ret = -EAGAIN;
-        goto out;
+        if (hdl->flags & O_NONBLOCK)
+        {
+            ret = -EAGAIN;
+            goto out;
+        } else {
+            struct shim_handle * read_hdl = hdl->info.eventfd.pipe_hdl[0];
+            PAL_NUM bytes = DkStreamRead(read_hdl->pal_handle, 0, count, buf, NULL, 0);
+
+            if (!bytes)
+                return -PAL_ERRNO;
+        }
     }
 
     *(long long *) buf = hdl->info.eventfd.counter;
