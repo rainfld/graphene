@@ -26,7 +26,8 @@
 #include <asm/fcntl.h>
 #include <shim_profile.h>
 
-#define EVENTFD_COUNTER_SIZE 8
+#define EVENTFD_COUNTER_SIZE        8
+#define EVENTFD_MAX_VAL             0xffffffffffffffffULL
 
 static ssize_t eventfd_read (struct shim_handle * hdl, void * buf,
                           size_t count)
@@ -65,7 +66,7 @@ static ssize_t eventfd_write (struct shim_handle * hdl, const void * buf,
     ssize_t ret = EVENTFD_COUNTER_SIZE;
 
     debug("eventfd_write  counter init value: %lld\n", hdl->info.eventfd.counter);
-    if (!buf || count != EVENTFD_COUNTER_SIZE)
+    if (!buf || count != EVENTFD_COUNTER_SIZE || (*(unsigned long long *) buf) >= EVENTFD_MAX_VAL)
     {
         ret = -EINVAL;
         goto out;

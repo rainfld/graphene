@@ -142,7 +142,7 @@ struct shim_pipe_handle {
 };
 
 struct shim_eventfd_handle {
-    atomic_llong                counter;
+    atomic_ullong                counter;
     int                      pipe_fds[2];
     struct shim_handle*      pipe_hdl[2];
 };
